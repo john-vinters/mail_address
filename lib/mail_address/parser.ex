@@ -11,132 +11,6 @@ defmodule MailAddress.Parser do
   alias MailAddress.Options
 
   @doc """
-  Applies checks and optional domain downcasing to given address using
-  passed options.
-
-  This function is automatically called as required by other functions
-  in the package, so doesn't normally need to be called unless you
-  are messing with the `MailAddress` struct directly (which isn't
-  a good idea).
-
-  If successful, returns `{:ok, new_address}`, otherwise returns
-  `{:error, error_message}`.
-  """
-  @spec check(MailAddress.t(), Options.t()) :: {:ok, MailAddress.t()} | MailAddress.error()
-  def check(%MailAddress{} = addr, %MailAddress.Options{} = options) do
-    with :ok <- check_domain(addr, options),
-         :ok <- check_domain_length(addr, options),
-         :ok <- check_local_part_length(addr, options),
-         :ok <- check_length(addr, options),
-         :ok <- check_null(addr, options),
-         {:ok, addr} <- check_needs_quoting(addr),
-         {:ok, addr} <- check_downcase(addr, options),
-         do: {:ok, addr}
-  end
-
-  # checks the domain isn't null (as long as entire address isn't null).
-  @spec check_domain(MailAddress.t(), Options.t()) :: :ok | MailAddress.error()
-  defp check_domain(%MailAddress{domain: ""} = addr, %Options{require_domain: true}) do
-    if byte_size(addr.local_part) == 0, do: :ok, else: {:error, "domain expected"}
-  end
-
-  defp check_domain(%MailAddress{} = addr, %Options{allow_localhost: false}) do
-    if MailAddress.domains_equal?(addr, "localhost") do
-      {:error, "domain can't be localhost"}
-    else
-      :ok
-    end
-  end
-
-  defp check_domain(%MailAddress{}, %MailAddress.Options{}), do: :ok
-
-  # checks domain length is OK.
-  @spec check_domain_length(MailAddress.t(), MailAddress.Options.t()) ::
-          {:ok, MailAddress.t()} | MailAddress.error()
-  defp check_domain_length(%MailAddress{domain: dom}, %MailAddress.Options{} = options) do
-    max_length = options.max_domain_length
-
-    if byte_size(dom) > max_length do
-      {:error, "domain too long (must be <= #{max_length} characters)"}
-    else
-      :ok
-    end
-  end
-
-  # downcases the domain part if required.
-  @spec check_downcase(MailAddress.t(), Options.t()) ::
-          {:ok, MailAddress.t()} | MailAddress.error()
-  defp check_downcase(%MailAddress{domain: dom} = addr, %Options{downcase_domain: true}) do
-    {:ok, %{addr | domain: String.downcase(dom)}}
-  end
-
-  defp check_downcase(%MailAddress{} = addr, %MailAddress.Options{}), do: {:ok, addr}
-
-  # checks overall length is OK.
-  @spec check_length(MailAddress.t(), MailAddress.Options.t()) ::
-          {:ok, MailAddress.t()} | MailAddress.error()
-  defp check_length(%MailAddress{local_part: loc, domain: dom}, %MailAddress.Options{} = options) do
-    max_length = options.max_address_length
-
-    if byte_size(loc) + 1 + byte_size(dom) > 256 do
-      {:error, "address too long (must be <= #{max_length} characters)"}
-    else
-      :ok
-    end
-  end
-
-  # checks local part length is OK.
-  @spec check_local_part_length(MailAddress.t(), MailAddress.Options.t()) ::
-          {:ok, MailAddress.t()} | MailAddress.error()
-  defp check_local_part_length(%MailAddress{local_part: loc}, %MailAddress.Options{} = options) do
-    max_length = options.max_local_part_length
-
-    if byte_size(loc) > max_length do
-      {:error, "local part too long (must be <= #{max_length} characters)"}
-    else
-      :ok
-    end
-  end
-
-  # checks to see if address needs quoting
-  @spec check_needs_quoting(MailAddress.t()) :: {:ok, MailAddress.t()} | MailAddress.error()
-  defp check_needs_quoting(%MailAddress{local_part: "", domain: ""} = addr),
-    do: {:ok, %{addr | needs_quoting: false}}
-
-  defp check_needs_quoting(%MailAddress{local_part: ""} = addr),
-    do: {:ok, %{addr | needs_quoting: true}}
-
-  defp check_needs_quoting(%MailAddress{local_part: <<?.::size(8), _rest::binary>>} = addr),
-    do: {:ok, %{addr | needs_quoting: true}}
-
-  defp check_needs_quoting(%MailAddress{local_part: local} = addr) do
-    {needs_quoting, last_dot} =
-      local
-      |> :binary.bin_to_list()
-      |> Enum.reduce({false, false}, fn ch, {nq, ld} = acc ->
-        is_dot = ch == ?.
-
-        cond do
-          nq -> acc
-          is_dot && ld -> {true, ld}
-          is_dot -> {nq, true}
-          !CharSet.atext?(ch) -> {true, ld}
-          true -> {nq, false}
-        end
-      end)
-
-    {:ok, %{addr | needs_quoting: needs_quoting || last_dot}}
-  end
-
-  # checks the address isn't null.
-  @spec check_null(MailAddress.t(), Options.t()) :: :ok | MailAddress.error()
-  defp check_null(%MailAddress{local_part: "", domain: ""}, %Options{allow_null: false}) do
-    {:error, "address can't be null"}
-  end
-
-  defp check_null(%MailAddress{}, %MailAddress.Options{}), do: :ok
-
-  @doc """
   Parses an email address, with options configured by the `options`
   parameter.
 
@@ -182,7 +56,7 @@ defmodule MailAddress.Parser do
     with {:ok, brak, ranb} <- proc_opening_bracket(raw_addr, options),
          {:ok, %MailAddress{} = addr, rem} <- parse_apply(ranb),
          {:ok, rnb} <- proc_closing_bracket(rem, brak),
-         {:ok, %MailAddress{} = addr2} <- check(addr, options),
+         {:ok, %MailAddress{} = addr2} <- MailAddress.check(addr, options),
          do: {:ok, addr2, rnb}
   end
 
