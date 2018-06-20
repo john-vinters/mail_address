@@ -205,13 +205,17 @@ defmodule MailAddress do
   # checks local part length is OK.
   @spec check_local_part_length(MailAddress.t(), MailAddress.Options.t()) ::
           {:ok, MailAddress.t()} | MailAddress.error()
-  defp check_local_part_length(%MailAddress{local_part: loc}, %MailAddress.Options{} = options) do
+  defp check_local_part_length(%MailAddress{domain: dom, local_part: loc}, %MailAddress.Options{} = options) do
     max_length = options.max_local_part_length
+    len = byte_size(loc)
 
-    if byte_size(loc) > max_length do
-      {:error, "local part too long (must be <= #{max_length} characters)"}
-    else
-      :ok
+    cond do
+      len > max_length ->
+        {:error, "local part too long (must be <= #{max_length} characters"}
+      len == 0 && !options.allow_null_local_part && byte_size(dom) > 0 ->
+        {:error, "local part can't be null"}
+      true ->
+        :ok
     end
   end
 
@@ -524,7 +528,7 @@ defmodule MailAddress do
 
   ## Examples
 
-      iex> {:ok, addr} = MailAddress.set_domain(%MailAddress{}, "test")
+      iex> {:ok, addr} = MailAddress.set_domain(%MailAddress{}, "test", %MailAddress.Options{allow_null_local_part: true})
       iex> MailAddress.domain(addr)
       "test"
 
@@ -570,6 +574,9 @@ defmodule MailAddress do
       iex> {:ok, addr} = MailAddress.set_local_part(%MailAddress{}, "test", %MailAddress.Options{require_domain: false})
       iex> MailAddress.local_part(addr)
       "test"
+
+      iex> MailAddress.set_domain(%MailAddress{}, "test", %MailAddress.Options{allow_null_local_part: false})
+      {:error, "local part can't be null"}
 
       iex> {:ok, addr} = MailAddress.new("test", "example.org")
       iex> MailAddress.local_part(addr)
