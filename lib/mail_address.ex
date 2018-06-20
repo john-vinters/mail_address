@@ -5,6 +5,87 @@
 defmodule MailAddress do
   @moduledoc """
   Functions to handle RFC5321 Mail Addresses.
+
+  The library implements functions for handling email addresses as specified
+  mostly by RFC5321.  A large chunk of the address syntax is implemented, with
+  a few exceptions:
+
+    * Handling of address literals in domains (e.g. [127.0.0.1]).
+    * Handling of internationalized addresses (UTF8, punycode etc).
+
+  ## Creating Addresses
+
+  Addresses may be created a number of ways:
+
+    * `%MailAddress{}` - this will create a null address.
+
+    * Calling `new/3` - this will directly assign a local and domain part.
+
+    * Calling `MailAddress.Parser.parse/2` - this will parse a string into
+      an address.
+
+  ### Examples
+
+      iex> %MailAddress{}
+      #MailAddress<>
+
+      iex> {:ok, addr} = MailAddress.new("test", "example.org")
+      iex> addr
+      #MailAddress<test@example.org>
+
+      iex> {:ok, addr, ""} = MailAddress.Parser.parse("test@example.org")
+      iex> addr
+      #MailAddress<test@example.org>
+
+  ## Modifying Addresses
+
+  Addresses can be modified by a number of functions, which return a new
+  address with the appropriate update:
+
+    * `set_domain/3` - updates domain.
+    * `set_local_part/3` - updates local part of address.
+
+  ## Querying Addresses
+
+  Addresses can be queryied for their components:
+
+    * `domain?/1` - checks if the address has a domain set.
+    * `domain/1` - returns the address domain.
+    * `local_part?/1` - checks if the address has a local part set.
+    * `local_part/1` - returns the address local part.
+    * `needs_quoting?/1` - checks if the address local part needs quoting.
+    * `null?/1` - returns true if the address is null (no local or domain parts).
+
+  ## Comparing and Encoding Addresses
+
+    * `domains_equal?/2` - compares address domains.
+    * `encode/2` - encodes address as string, taking care of quoting etc.
+    * `equal?/2` - compares two addresses.
+    * `local_parts_equal?/2` - compares address local parts.
+
+  ## Parsing Addresses
+
+  The module MailAddress.Parser contains parsing code.
+
+    * `MailAddress.Parser.parse/2` - parses a string into an address.
+    * `MailAddress.Parser.valid?/2` - determines if address has valid syntax.
+
+  ## Specifying Options
+
+  The `MailAddress.Options` struct is used to store options for configuring
+  the library.  Checks are applied after every change/creation operation.
+
+  ## Protocols
+
+  The library implements the `Inspect` and `String.Chars` protocols for
+  `MailAddress` structs.
+
+  The `Inspect` protocol is used in the `iex` shell and by `inspect/2` to
+  pretty-print the `MailAddress` struct contents.
+
+  The `String.Chars` protocol enables a `MailAddress` struct to be directly
+  converted into an encoded string.
+
   """
 
   alias MailAddress.CharSet
