@@ -7,8 +7,10 @@ defmodule MailAddress.MixProject do
       version: "0.1.0",
       elixir: "~> 1.6",
       package: package(),
+      source_url: github(),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      description: "RFC5321 Mail Address handling library",
       dialyzer: [
         plt_add_deps: :transitive,
         flags: [:unmatched_returns, :race_conditions, :error_handling, :underspecs],
