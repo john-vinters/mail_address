@@ -13,3 +13,19 @@ It contains the following features:
 Note that this package doesn't deal with UTF8, punycode etc, and
 attempting to feed UTF8 characters outside the 32..126 range to the
 various functions will result in errors.
+
+## Installation
+
+To use the package, add `:mail_address` as a dependency to your `mix.exs`
+file:
+
+```elixir
+defp deps do
+  [
+    {:mail_address, "~> 0.1.0"}
+  ]
+end
+```
+
+After running `mix deps.get` the library should be fetched and available
+for use.
