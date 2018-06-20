@@ -178,7 +178,7 @@ defmodule MailAddress do
   defp check_length(%MailAddress{local_part: loc, domain: dom}, %MailAddress.Options{} = options) do
     max_length = options.max_address_length
 
-    if byte_size(loc) + 1 + byte_size(dom) > 256 do
+    if byte_size(loc) + 1 + byte_size(dom) > max_length do
       {:error, "address too long (must be <= #{max_length} characters)"}
     else
       :ok
