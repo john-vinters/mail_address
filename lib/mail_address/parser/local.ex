@@ -11,7 +11,7 @@ defmodule MailAddress.Parser.Local do
   Parses a local part, updating given address.
   Returns `{:ok, local_part, remainder}` or `{:error, reason}`.
   """
-  @spec parse(String.t()) :: {:ok, String.t()} | MailAddress.error()
+  @spec parse(String.t()) :: {:ok, String.t(), String.t()} | MailAddress.error()
   def parse(<<?"::size(8), local::binary>>), do: parse_quoted_str(local)
   def parse(local) when is_binary(local), do: parse_dot_str(local)
 

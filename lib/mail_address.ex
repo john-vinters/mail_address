@@ -203,7 +203,7 @@ defmodule MailAddress do
   If successful, returns `{:ok, new_address}`, otherwise returns
   `{:error, error_message}`.
   """
-  @spec check(MailAddress.t(), Options.t()) :: {:ok, MailAddress.t()} | MailAddress.error()
+  @spec check(MailAddress.t(), Options.t()) :: {:ok, MailAddress.t()} | error()
   def check(%MailAddress{} = addr, %MailAddress.Options{} = options) do
     with :ok <- check_domain(addr, options),
          :ok <- check_domain_length(addr, options),
@@ -216,7 +216,7 @@ defmodule MailAddress do
   end
 
   # checks the domain isn't null (as long as entire address isn't null).
-  @spec check_domain(MailAddress.t(), Options.t()) :: :ok | MailAddress.error()
+  @spec check_domain(MailAddress.t(), Options.t()) :: :ok | error()
   defp check_domain(%MailAddress{domain: ""} = addr, %Options{require_domain: true}) do
     if byte_size(addr.local_part) == 0, do: :ok, else: {:error, "domain expected"}
   end
@@ -232,8 +232,7 @@ defmodule MailAddress do
   defp check_domain(%MailAddress{}, %MailAddress.Options{}), do: :ok
 
   # checks domain length is OK.
-  @spec check_domain_length(MailAddress.t(), MailAddress.Options.t()) ::
-          {:ok, MailAddress.t()} | MailAddress.error()
+  @spec check_domain_length(MailAddress.t(), MailAddress.Options.t()) :: :ok | error()
   defp check_domain_length(%MailAddress{domain: dom}, %MailAddress.Options{} = options) do
     max_length = options.max_domain_length
 
@@ -245,8 +244,7 @@ defmodule MailAddress do
   end
 
   # downcases the domain part if required.
-  @spec check_downcase(MailAddress.t(), Options.t()) ::
-          {:ok, MailAddress.t()} | MailAddress.error()
+  @spec check_downcase(MailAddress.t(), Options.t()) :: {:ok, MailAddress.t()} | error()
   defp check_downcase(%MailAddress{domain: dom} = addr, %Options{downcase_domain: true}) do
     {:ok, %{addr | domain: String.downcase(dom)}}
   end
@@ -254,8 +252,7 @@ defmodule MailAddress do
   defp check_downcase(%MailAddress{} = addr, %MailAddress.Options{}), do: {:ok, addr}
 
   # checks overall length is OK.
-  @spec check_length(MailAddress.t(), MailAddress.Options.t()) ::
-          {:ok, MailAddress.t()} | MailAddress.error()
+  @spec check_length(MailAddress.t(), MailAddress.Options.t()) :: :ok | error()
   defp check_length(%MailAddress{local_part: loc, domain: dom}, %MailAddress.Options{} = options) do
     max_length = options.max_address_length
 
@@ -284,8 +281,7 @@ defmodule MailAddress do
   end
 
   # checks local part length is OK.
-  @spec check_local_part_length(MailAddress.t(), MailAddress.Options.t()) ::
-          {:ok, MailAddress.t()} | MailAddress.error()
+  @spec check_local_part_length(MailAddress.t(), MailAddress.Options.t()) :: :ok | error()
   defp check_local_part_length(%MailAddress{domain: dom, local_part: loc}, %MailAddress.Options{} = options) do
     max_length = options.max_local_part_length
     len = byte_size(loc)
@@ -301,7 +297,7 @@ defmodule MailAddress do
   end
 
   # checks to see if address needs quoting
-  @spec check_needs_quoting(MailAddress.t()) :: {:ok, MailAddress.t()} | MailAddress.error()
+  @spec check_needs_quoting(MailAddress.t()) :: {:ok, MailAddress.t()} | error()
   defp check_needs_quoting(%MailAddress{local_part: "", domain: ""} = addr),
     do: {:ok, %{addr | needs_quoting: false}}
 
@@ -331,7 +327,7 @@ defmodule MailAddress do
   end
 
   # checks the address isn't null.
-  @spec check_null(MailAddress.t(), Options.t()) :: :ok | MailAddress.error()
+  @spec check_null(MailAddress.t(), Options.t()) :: :ok | error()
   defp check_null(%MailAddress{local_part: "", domain: ""}, %Options{allow_null: false}) do
     {:error, "address can't be null"}
   end
