@@ -92,10 +92,16 @@ defmodule MailAddress do
 
   @typedoc "Error return type - a tuple containing `:error` and a reason string."
   @type error :: {:error, String.t()}
+
+  @typedoc "Represents an IPv4 or IPv6 address."
+  @type ip_address :: :inet.ip4_address | :inet.ip6_address
+
   @typedoc "Success return type - a tuple containing `:ok` and a `MailAddress` struct."
   @type success :: {:ok, %__MODULE__{}}
+
   @typedoc "The `MailAddress` struct."
   @type t :: %__MODULE__{
+          address_literal: nil | ip_address(),
           local_part: String.t(),
           domain: String.t(),
           needs_quoting: boolean
@@ -111,7 +117,8 @@ defmodule MailAddress do
   Callers should use the appropriate functions to get/set fields which
   ensures that everything remains in-sync and valid.
   """
-  defstruct local_part: "",
+  defstruct address_literal: nil,
+            local_part: "",
             domain: "",
             needs_quoting: false
 
@@ -136,6 +143,7 @@ defmodule MailAddress do
 
     @typedoc "The `MailAddress.Options` struct."
     @type t :: %__MODULE__{
+            allow_address_literal: boolean,
             allow_localhost: boolean,
             allow_null: boolean,
             allow_null_local_part: boolean,
@@ -149,6 +157,9 @@ defmodule MailAddress do
 
     @doc """
     Holds the configuration options for handling addresses.
+
+      * `:allow_address_literal` - if `true`, allows domain part to be an
+        address literal.  Defaults to `false`.
 
       * `:allow_localhost` - if `true`, allows domain part to be "localhost".
         Defaults to `false`.
@@ -180,7 +191,8 @@ defmodule MailAddress do
         component unless it is a null address. Defaults to `true`.
 
     """
-    defstruct allow_localhost: false,
+    defstruct allow_address_literal: false,
+              allow_localhost: false,
               allow_null: false,
               allow_null_local_part: false,
               downcase_domain: false,
@@ -190,6 +202,37 @@ defmodule MailAddress do
               require_brackets: false,
               require_domain: true
   end
+
+  @doc """
+  Returns the decoded address literal domain (if any), or nil otherwise.
+
+  ## Examples
+
+      iex> MailAddress.address_literal(%MailAddress{})
+      nil
+
+      iex> {:ok, addr} = MailAddress.new("test", "[192.168.0.1]", %MailAddress.Options{allow_address_literal: true})
+      iex> MailAddress.address_literal(addr)
+      {192, 168, 0, 1}
+  """
+  @spec address_literal(MailAddress.t()) :: String.t()
+  def address_literal(%MailAddress{address_literal: a}), do: a
+
+  @doc """
+  Checks whether address has an address literal domain part.
+
+  ## Examples
+
+      iex> MailAddress.address_literal?(%MailAddress{})
+      false
+
+      iex> {:ok, addr} = MailAddress.new("test", "[192.168.0.1]", %MailAddress.Options{allow_address_literal: true})
+      iex> MailAddress.address_literal?(addr)
+      true
+  """
+  @spec address_literal?(MailAddress.t()) :: boolean
+  def address_literal?(%MailAddress{address_literal: nil}), do: false
+  def address_literal?(%MailAddress{}), do: true
 
   @doc """
   Applies checks and optional domain downcasing to given address using
@@ -207,6 +250,7 @@ defmodule MailAddress do
   def check(%MailAddress{} = addr, %MailAddress.Options{} = options) do
     with :ok <- check_domain(addr, options),
          :ok <- check_domain_length(addr, options),
+         :ok <- check_domain_address_literal(addr, options),
          :ok <- check_local_part_length(addr, options),
          :ok <- check_length(addr, options),
          :ok <- check_null(addr, options),
@@ -230,6 +274,14 @@ defmodule MailAddress do
   end
 
   defp check_domain(%MailAddress{}, %MailAddress.Options{}), do: :ok
+
+  # checks the domain isn't an address literal (if configured to do so).
+  @spec check_domain_address_literal(MailAddress.t(), Options.t()) :: :ok | error()
+  defp check_domain_address_literal(%MailAddress{address_literal: nil}, %Options{allow_address_literal: false}), do: :ok
+  defp check_domain_address_literal(%MailAddress{}, %Options{allow_address_literal: false}) do
+    {:error, "domain can't be an address literal"}
+  end
+  defp check_domain_address_literal(%MailAddress{}, %Options{}), do: :ok
 
   # checks domain length is OK.
   @spec check_domain_length(MailAddress.t(), MailAddress.Options.t()) :: :ok | error()
