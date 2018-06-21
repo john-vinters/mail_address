@@ -118,7 +118,7 @@ defmodule MailAddress.Parser do
       true
   """
   def valid?(address, %MailAddress.Options{} = options \\ %MailAddress.Options{}) do
-    case MailAddress.Parser.parse(address, options) do
+    case parse(address, options) do
       {:ok, %MailAddress{}, ""} -> true
       _ -> false
     end
