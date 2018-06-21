@@ -34,8 +34,6 @@ defmodule MailAddress.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:credo, ">= 0.8.0", only: :dev, runtime: false},
-      {:dialyxir, ">= 0.5.0", only: :dev, runtime: false},
       {:ex_doc, "~> 0.18", only: [:dev, :docs], runtime: false}
     ]
   end
