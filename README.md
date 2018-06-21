@@ -1,5 +1,7 @@
 # MailAddress
 
+[![Hex.pm](https://img.shields.io/hexpm/v/mail_address.svg)](https://hex.pm/packages/mail_address)
+
 ## Introduction
 
 MailAddress is an MIT-licensed package for handling RFC5321 email addresses.
