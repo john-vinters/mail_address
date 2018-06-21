@@ -11,20 +11,80 @@ defmodule MailAddress.Parser.Domain do
   Parses a domain part.
   Returns `{:ok, domain, remainder}` or `{:error, reason}`.
   """
-  @spec parse(String.t()) :: {:ok, String.t(), String.t()} | MailAddress.error()
-  def parse(""), do: {:ok, "", ""}
+  @spec parse(String.t()) ::
+          {:ok, String.t(), String.t(), nil | MailAddress.ip_address()} | MailAddress.error()
+  def parse(""), do: {:ok, "", "", nil}
 
+  # address literal
+  def parse(<<?[::size(8), literal::binary>>) do
+    with {:ok, lit, rem} <- parse_address_literal_end("", literal),
+         {:ok, addr} <- parse_address_literal(lit) do
+      f_lit = addr |> :inet.ntoa() |> :binary.list_to_bin()
+      b_lit = <<?[::size(8), f_lit::binary, ?]::size(8)>>
+      {:ok, b_lit, rem, addr}
+    end
+  end
+
+  # ordinary domain
   def parse(domain) when is_binary(domain) do
     with {:ok, subdomain, rem} <- parse_subdomain(domain),
-         do: parse_domain_repeat(rem, subdomain)
+         {:ok, dom, rem} <- parse_domain_repeat(rem, subdomain),
+         do: {:ok, dom, rem, nil}
+  end
+
+  # parses address literal (square brackets have already been removed).
+  @spec parse_address_literal(String.t()) :: {:ok, MailAddress.ip_address()} | MailAddress.error()
+  def parse_address_literal(<<"IPv6:"::binary, literal::binary>>) do
+    pa =
+      literal
+      |> :binary.bin_to_list()
+      |> :inet.parse_ipv6strict_address()
+
+    case pa do
+      {:ok, {_, _, _, _, _, _, _, _}} = r ->
+        r
+
+      {:error, :einval} ->
+        {:error, "invalid IPv6 address literal"}
+    end
+  end
+
+  def parse_address_literal(literal) when is_binary(literal) do
+    pa =
+      literal
+      |> :binary.bin_to_list()
+      |> :inet.parse_ipv4strict_address()
+
+    case pa do
+      {:ok, {_, _, _, _}} = r ->
+        r
+
+      {:error, :einval} ->
+        {:error, "invalid IPv4 address literal"}
+    end
+  end
+
+  # keeps going until ']' found, or end of string (which returns an error).
+  @spec parse_address_literal_end(String.t(), String.t()) ::
+          {:ok, String.t(), String.t()} | MailAddress.error()
+  defp parse_address_literal_end(_, "") do
+    {:error, "unexpected end of domain address literal"}
+  end
+
+  defp parse_address_literal_end(literal, <<ch::size(8), rem::binary>>) do
+    case ch do
+      ?] -> {:ok, literal, rem}
+      _ -> parse_address_literal_end(<<literal::binary, ch::size(8)>>, rem)
+    end
   end
 
   # parses @domain, dropping the '@'.
-  @spec parse_at(String.t()) :: {:ok, String.t(), String.t()} | MailAddress.error()
+  @spec parse_at(String.t()) ::
+          {:ok, String.t(), String.t(), nil | MailAddress.ip_address()} | MailAddress.error()
   def parse_at(<<?@::size(8), domain::binary>>),
     do: parse(domain)
 
-  def parse_at(domain) when is_binary(domain), do: {:ok, "", domain}
+  def parse_at(domain) when is_binary(domain), do: {:ok, "", domain, nil}
 
   defp parse_domain_repeat(<<?.::size(8), domain::binary>>, acc) do
     with {:ok, subdomain, rem} <- parse_subdomain(domain) do

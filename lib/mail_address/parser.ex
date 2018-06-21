@@ -65,8 +65,10 @@ defmodule MailAddress.Parser do
   @spec parse_apply(String.t()) :: {:ok, MailAddress.t(), String.t()} | MailAddress.error()
   defp parse_apply(raw_addr) when is_binary(raw_addr) do
     with {:ok, local, remaining} <- MailAddress.Parser.Local.parse(raw_addr),
-         {:ok, domain, remaining} <- MailAddress.Parser.Domain.parse_at(remaining),
-         do: {:ok, %MailAddress{local_part: local, domain: domain}, remaining}
+         {:ok, domain, remaining, literal} <- MailAddress.Parser.Domain.parse_at(remaining),
+         do:
+           {:ok, %MailAddress{address_literal: literal, local_part: local, domain: domain},
+            remaining}
   end
 
   # checks the closing bracket is present if required.

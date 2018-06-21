@@ -10,7 +10,8 @@ defmodule MailAddress do
   mostly by RFC5321.  A large chunk of the address syntax is implemented, with
   a few exceptions:
 
-    * Handling of address literals in domains (e.g. [127.0.0.1]).
+    * Handling of general address literals in domains (IPv4 and IPv6
+      address literals are supported).
     * Handling of internationalized addresses (UTF8, punycode etc).
 
   ## Creating Addresses
@@ -49,6 +50,8 @@ defmodule MailAddress do
 
   Addresses can be queryied for their components:
 
+    * `address_literal?/1` - checks if the address has an address literal domain set.
+    * `address_literal/1` - returns address literal domain (or `nil` if none).
     * `domain?/1` - checks if the address has a domain set.
     * `domain/1` - returns the address domain.
     * `local_part?/1` - checks if the address has a local part set.
@@ -94,7 +97,7 @@ defmodule MailAddress do
   @type error :: {:error, String.t()}
 
   @typedoc "Represents an IPv4 or IPv6 address."
-  @type ip_address :: :inet.ip4_address | :inet.ip6_address
+  @type ip_address :: :inet.ip4_address() | :inet.ip6_address()
 
   @typedoc "Success return type - a tuple containing `:ok` and a `MailAddress` struct."
   @type success :: {:ok, %__MODULE__{}}
@@ -266,7 +269,7 @@ defmodule MailAddress do
   end
 
   defp check_domain(%MailAddress{} = addr, %Options{allow_localhost: false}) do
-    if MailAddress.domains_equal?(addr, "localhost") do
+    if domains_equal?(addr, "localhost") do
       {:error, "domain can't be localhost"}
     else
       :ok
@@ -277,10 +280,15 @@ defmodule MailAddress do
 
   # checks the domain isn't an address literal (if configured to do so).
   @spec check_domain_address_literal(MailAddress.t(), Options.t()) :: :ok | error()
-  defp check_domain_address_literal(%MailAddress{address_literal: nil}, %Options{allow_address_literal: false}), do: :ok
+  defp check_domain_address_literal(%MailAddress{address_literal: nil}, %Options{
+         allow_address_literal: false
+       }),
+       do: :ok
+
   defp check_domain_address_literal(%MailAddress{}, %Options{allow_address_literal: false}) do
     {:error, "domain can't be an address literal"}
   end
+
   defp check_domain_address_literal(%MailAddress{}, %Options{}), do: :ok
 
   # checks domain length is OK.
@@ -334,15 +342,20 @@ defmodule MailAddress do
 
   # checks local part length is OK.
   @spec check_local_part_length(MailAddress.t(), MailAddress.Options.t()) :: :ok | error()
-  defp check_local_part_length(%MailAddress{domain: dom, local_part: loc}, %MailAddress.Options{} = options) do
+  defp check_local_part_length(
+         %MailAddress{domain: dom, local_part: loc},
+         %MailAddress.Options{} = options
+       ) do
     max_length = options.max_local_part_length
     len = byte_size(loc)
 
     cond do
       len > max_length ->
         {:error, "local part too long (must be <= #{max_length} characters"}
+
       len == 0 && !options.allow_null_local_part && byte_size(dom) > 0 ->
         {:error, "local part can't be null"}
+
       true ->
         :ok
     end
@@ -425,6 +438,7 @@ defmodule MailAddress do
 
       iex> {:ok, addr_1} = MailAddress.new("test", "example.org")
       iex> {:ok, addr_2} = MailAddress.new("another", "example.org")
+      iex> {:ok, addr_3} = MailAddress.new("test", "localhost", %MailAddress.Options{allow_localhost: true})
       iex> MailAddress.domains_equal?(addr_1, "example.org")
       true
       iex> MailAddress.domains_equal?(addr_2, "EXAMPLE.ORG")
@@ -435,14 +449,22 @@ defmodule MailAddress do
       true
       iex> MailAddress.domains_equal?(addr_1, %MailAddress{})
       false
+      iex> MailAddress.domains_equal?(addr_3, "localhost")
+      true
+      iex> MailAddress.domains_equal?(addr_3, "[127.0.0.1]")
+      true
+      iex> MailAddress.domains_equal?(addr_3, "[IPv6:::1]")
+      true
   """
   @spec domains_equal?(MailAddress.t(), String.t() | MailAddress.t()) :: boolean
-  def domains_equal?(%MailAddress{domain: d1}, domain) when is_binary(domain) do
+  def domains_equal?(%MailAddress{domain: d1} = addr, domain) when is_binary(domain) do
     String.downcase(d1) == String.downcase(domain)
+    || (localhost?(addr) && localhost_string?(domain))
   end
 
-  def domains_equal?(%MailAddress{domain: d1}, %MailAddress{domain: d2}) do
+  def domains_equal?(%MailAddress{domain: d1} = a1, %MailAddress{domain: d2} = a2) do
     String.downcase(d1) == String.downcase(d2)
+    || (localhost?(a1) && localhost?(a2))
   end
 
   @doc """
@@ -565,7 +587,8 @@ defmodule MailAddress do
     do: l1 == l2
 
   @doc """
-  Checks whether domain part of address is 'localhost'.
+  Checks whether domain part of address is 'localhost', or the domain
+  is an address literal and is [127.0.0.1] or [IPv6:::1].
 
   ## Examples
 
@@ -576,10 +599,60 @@ defmodule MailAddress do
       iex> {:ok, addr_2} = MailAddress.new("test", "localhost", %MailAddress.Options{allow_localhost: true})
       iex> MailAddress.localhost?(addr_2)
       true
+
+      iex> {:ok, addr_3} = MailAddress.new("test", "[127.0.0.1]", %MailAddress.Options{allow_address_literal: true, allow_localhost: true})
+      iex> MailAddress.localhost?(addr_3)
+      true
+
+      iex> {:ok, addr_4} = MailAddress.new("test", "[192.168.0.1]", %MailAddress.Options{allow_address_literal: true, allow_localhost: true})
+      iex> MailAddress.localhost?(addr_4)
+      false
+
+      iex> {:ok, addr_5} = MailAddress.new("test", "[IPv6:::1]", %MailAddress.Options{allow_address_literal: true, allow_localhost: true})
+      iex> MailAddress.localhost?(addr_5)
+      true
   """
   @spec localhost?(MailAddress.t()) :: boolean
   def localhost?(%MailAddress{domain: "localhost"}), do: true
+  def localhost?(%MailAddress{address_literal: {127, 0, 0, 1}}), do: true
+  def localhost?(%MailAddress{address_literal: {0, 0, 0, 0, 0, 0, 0, 1}}), do: true
   def localhost?(%MailAddress{}), do: false
+
+  @doc """
+  Checks to see if the given string is "localhost" or equivalent
+  ([127.0.0.1] or [IPv6:::1]).
+
+  ## Examples:
+
+      iex> MailAddress.localhost_string?("test")
+      false
+
+      iex> MailAddress.localhost_string?("LOCALHOST")
+      true
+
+      iex> MailAddress.localhost_string?("[127.0.0.1]")
+      true
+
+      iex> MailAddress.localhost_string?("[127.0.0.1")
+      false
+
+      iex> MailAddress.localhost_string?("[192.168.0.1]")
+      false
+
+      iex> MailAddress.localhost_string?("[IPv6:::1]")
+      true
+  """
+  @spec localhost_string?(String.t) :: boolean
+  def localhost_string?(<<?[::size(8), _rest::binary>> = str) do
+    case MailAddress.Parser.Domain.parse(str) do
+      {:ok, _, _, {127, 0, 0, 1}} -> true
+      {:ok, _, _, {0, 0, 0, 0, 0, 0, 0, 1}} -> true
+      _ -> false
+    end
+  end
+  def localhost_string?(str) do
+    String.downcase(str) == "localhost"
+  end
 
   @doc """
   Checks whether the local part of the given address needs quoting.
@@ -617,11 +690,11 @@ defmodule MailAddress do
   def new(local, domain, %MailAddress.Options{} = options \\ %MailAddress.Options{})
       when is_binary(local) and is_binary(domain) do
     with :ok <- check_local_part(local),
-         {:ok, parsed_domain, ""} <- MailAddress.Parser.Domain.parse(domain) do
-      %MailAddress{local_part: local, domain: parsed_domain}
+         {:ok, parsed_domain, "", literal} <- MailAddress.Parser.Domain.parse(domain) do
+      %MailAddress{address_literal: literal, local_part: local, domain: parsed_domain}
       |> check(options)
     else
-      {:ok, _, _} ->
+      {:ok, _, _, _} ->
         {:error, "invalid domain"}
 
       {:error, _} = err ->
@@ -676,11 +749,11 @@ defmodule MailAddress do
       )
       when is_binary(domain) do
     case MailAddress.Parser.Domain.parse(domain) do
-      {:ok, parsed_domain, ""} ->
-        %{addr | domain: parsed_domain}
+      {:ok, parsed_domain, "", literal} ->
+        %{addr | address_literal: literal, domain: parsed_domain}
         |> check(options)
 
-      {:ok, _, _} ->
+      {:ok, _, _, _} ->
         {:error, "invalid domain"}
 
       {:error, _} = err ->

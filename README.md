@@ -8,7 +8,7 @@ It contains the following features:
 
   * `MailAddress` contains the struct definition along with utility functions to encode, query or update the struct.
 
-  * `MailAddress.Parser` is a (slightly) configurable parser, which understands most of the RFC5321 address format (currently missing are address literals).
+  * `MailAddress.Parser` is a (slightly) configurable parser, which understands most of the RFC5321 address format (currently missing are general address literals, IPv4 and IPv6 literals are now supported).
 
 Note that this package doesn't deal with UTF8, punycode etc, and
 attempting to feed UTF8 characters outside the 32..126 range to the
