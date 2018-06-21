@@ -10,7 +10,7 @@ defmodule MailAddress.MixProject do
       source_url: github(),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      description: "RFC5321 Mail Address handling library",
+      description: "RFC5321 email address handling library",
       dialyzer: [
         plt_add_deps: :transitive,
         flags: [:unmatched_returns, :race_conditions, :error_handling, :underspecs],
