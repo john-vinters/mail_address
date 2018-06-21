@@ -1,6 +1,6 @@
 # MailAddress - RFC5321 Mail Address Handling
 # (c) Copyright 2018, John Vinters
-# Licence: MIT, see file COPYING for details.
+# Licence: MIT, see file LICENSE for details.
 
 defmodule MailAddress.Parser do
   @moduledoc """
