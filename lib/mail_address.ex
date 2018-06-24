@@ -458,13 +458,12 @@ defmodule MailAddress do
   """
   @spec domains_equal?(MailAddress.t(), String.t() | MailAddress.t()) :: boolean
   def domains_equal?(%MailAddress{domain: d1} = addr, domain) when is_binary(domain) do
-    String.downcase(d1) == String.downcase(domain)
-    || (localhost?(addr) && localhost_string?(domain))
+    String.downcase(d1) == String.downcase(domain) ||
+      (localhost?(addr) && localhost_string?(domain))
   end
 
   def domains_equal?(%MailAddress{domain: d1} = a1, %MailAddress{domain: d2} = a2) do
-    String.downcase(d1) == String.downcase(d2)
-    || (localhost?(a1) && localhost?(a2))
+    String.downcase(d1) == String.downcase(d2) || (localhost?(a1) && localhost?(a2))
   end
 
   @doc """
@@ -642,7 +641,7 @@ defmodule MailAddress do
       iex> MailAddress.localhost_string?("[IPv6:::1]")
       true
   """
-  @spec localhost_string?(String.t) :: boolean
+  @spec localhost_string?(String.t()) :: boolean
   def localhost_string?(<<?[::size(8), _rest::binary>> = str) do
     case MailAddress.Parser.Domain.parse(str) do
       {:ok, _, _, {127, 0, 0, 1}} -> true
@@ -650,6 +649,7 @@ defmodule MailAddress do
       _ -> false
     end
   end
+
   def localhost_string?(str) do
     String.downcase(str) == "localhost"
   end
