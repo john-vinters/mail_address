@@ -71,12 +71,14 @@ defmodule ParsingTest do
     assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("\"@test@\"@example.org")
     assert "@test@" = MailAddress.local_part(addr)
     assert "example.org" = MailAddress.domain(addr)
+    assert "<\"\\@test\\@\"@example.org>" = MailAddress.encode(addr)
   end
 
   test "parses address containing dot in local part" do
     assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("firstname.lastname@example.org")
     assert "firstname.lastname" = MailAddress.local_part(addr)
     assert "example.org" = MailAddress.domain(addr)
+    assert "<firstname.lastname@example.org>" = MailAddress.encode(addr)
   end
 
   test "rejects address local part beginning with dot" do
@@ -97,12 +99,15 @@ defmodule ParsingTest do
     assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("\"example..example\"@example.org")
     assert "example..example" = MailAddress.local_part(addr)
     assert "example.org" = MailAddress.domain(addr)
+    assert "<\"example\\.\\.example\"@example.org>" = MailAddress.encode(addr)
     assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("example\\..example@example.org")
     assert "example..example" = MailAddress.local_part(addr)
     assert "example.org" = MailAddress.domain(addr)
+    assert "<\"example\\.\\.example\"@example.org>" = MailAddress.encode(addr)
     assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("example.\\.example@example.org")
     assert "example..example" = MailAddress.local_part(addr)
     assert "example.org" = MailAddress.domain(addr)
+    assert "<\"example\\.\\.example\"@example.org>" = MailAddress.encode(addr)
   end
 
   test "rejects addresses with consecutive dots in domain" do
