@@ -14,6 +14,14 @@ defmodule MailAddress do
       address literals are supported).
     * Handling of internationalized addresses (UTF8, punycode etc).
 
+  The address parser is slightly more permissive than RFC5321 allows,
+  as it will tolerate backslash quoted characters in the local part of
+  addresses outside of quoted strings - this is technically against the
+  RFC5321 grammar, but there are examples everywhere of this sort of address.
+
+  Despite this, encoded addresses produced by the library are always quoted
+  correctly.
+
   ## Creating Addresses
 
   Addresses may be created a number of ways:
@@ -89,6 +97,47 @@ defmodule MailAddress do
   The `String.Chars` protocol enables a `MailAddress` struct to be directly
   converted into an encoded string.
 
+  ## Usage with Ecto
+
+  MailAddress provides cast/dump/load callbacks so that it can be used as
+  an `Ecto` type:
+
+  ```elixir
+  defmodule EctoExample do
+    use Ecto.Schema
+
+    schema "emailtest" do
+      field :email, MailAddress
+    end
+  end
+  ```
+
+  In migrations any MailAddress field should be defined as a type which
+  can hold a large enough (up to 256 chars) string, for example `:text`.
+
+  Addresses converted using from strings using cast/4 will be checked
+  for validity before they are accepted into the database.
+
+  Note that casting is done with a permissive set of options (allowing
+  null addresses etc) - if you wish to be stricter then you should apply
+  some validation yourself.
+
+  ## Usage with JSON libraries
+
+  MailAddress can be used with JSON libraries, and typically requires
+  implementation of the correct protocols to work, for example to
+  encode email addresses with `Poison`, the following needs to be
+  done:
+
+  ```elixir
+  defimpl Poison.Encoder, for: MailAddress do
+    def encode(%MailAddress{} = addr, options) do
+      Poison.Encoder.BitString.encode(MailAddress.encode(addr, false), options)
+    end
+  end
+  ```
+
+  This will encode any MailAddress structs as encoded strings.
   """
 
   alias MailAddress.CharSet
@@ -236,6 +285,24 @@ defmodule MailAddress do
   @spec address_literal?(MailAddress.t()) :: boolean
   def address_literal?(%MailAddress{address_literal: nil}), do: false
   def address_literal?(%MailAddress{}), do: true
+
+  @doc false
+  @spec cast(String.t() | MailAddress.t()) :: {:ok, MailAddress.t()} :: :error
+  def cast(addr) when is_binary(addr) do
+    trimmed_addr = String.trim(addr)
+    case MailAddress.Parser.parse(trimmed_addr, ecto_parse_options()) do
+      {:ok, %MailAddress{} = parsed, ""} ->
+        {:ok, parsed}
+      _ ->
+        :error
+    end
+  end
+
+  def cast(%MailAddress{} = addr) do
+    {:ok, addr}
+  end
+
+  def cast(_), do: :error
 
   @doc """
   Applies checks and optional domain downcasing to given address using
@@ -466,6 +533,23 @@ defmodule MailAddress do
     String.downcase(d1) == String.downcase(d2) || (localhost?(a1) && localhost?(a2))
   end
 
+  @doc false
+  @spec dump(MailAddress.t()) :: {:ok, String.t()}
+  def dump(%MailAddress{} = addr), do: {:ok, MailAddress.encode(addr, false)}
+  def dump(_), do: :error
+
+  # parses options for use with ecto
+  defp ecto_parse_options, do:
+    %MailAddress.Options{
+      allow_address_literal: true,
+      allow_localhost: true,
+      allow_null: true,
+      allow_null_local_part: false,
+      downcase_domain: true,
+      require_brackets: false,
+      require_domain: true
+    }
+
   @doc """
   Returns address safely encoded, optionally (and by default) bracketed.
 
@@ -532,6 +616,15 @@ defmodule MailAddress do
   @spec equal?(MailAddress.t(), MailAddress.t()) :: boolean
   def equal?(%MailAddress{} = addr_1, %MailAddress{} = addr_2) do
     local_parts_equal?(addr_1, addr_2) && domains_equal?(addr_1, addr_2)
+  end
+
+  @doc false
+  @spec load(String.t) :: {:ok, MailAddress.t()} | :error
+  def load(data) when is_binary(data) do
+    case MailAddress.Parser.parse(data, ecto_parse_options()) do
+      {:ok, %MailAddress{} = parsed, ""} -> {:ok, parsed}
+      _ -> :error
+    end
   end
 
   @doc """
@@ -800,4 +893,7 @@ defmodule MailAddress do
       |> check(options)
     end
   end
+
+  @doc false
+  def type, do: :string
 end
