@@ -18,9 +18,8 @@ defmodule MailAddress.Parser.Domain do
   # address literal
   def parse(<<?[::size(8), literal::binary>>) do
     with {:ok, lit, rem} <- parse_address_literal_end("", literal),
-         {:ok, addr} <- parse_address_literal(lit) do
-      f_lit = addr |> :inet.ntoa() |> :binary.list_to_bin()
-      b_lit = <<?[::size(8), f_lit::binary, ?]::size(8)>>
+         {:ok, addr, str} <- parse_address_literal(lit) do
+      b_lit = <<?[::size(8), str::binary, ?]::size(8)>>
       {:ok, b_lit, rem, addr}
     end
   end
@@ -33,7 +32,7 @@ defmodule MailAddress.Parser.Domain do
   end
 
   # parses address literal (square brackets have already been removed).
-  @spec parse_address_literal(String.t()) :: {:ok, MailAddress.ip_address()} | MailAddress.error()
+  @spec parse_address_literal(String.t()) :: {:ok, MailAddress.ip_address(), String.t()} | MailAddress.error()
   def parse_address_literal(<<"IPv6:"::binary, literal::binary>>) do
     pa =
       literal
@@ -41,8 +40,8 @@ defmodule MailAddress.Parser.Domain do
       |> :inet.parse_ipv6strict_address()
 
     case pa do
-      {:ok, {_, _, _, _, _, _, _, _}} = r ->
-        r
+      {:ok, {_, _, _, _, _, _, _, _} = addr} ->
+        {:ok, addr, "IPv6:#{:inet.ntoa(addr)}"}
 
       {:error, :einval} ->
         {:error, "invalid IPv6 address literal"}
@@ -56,8 +55,8 @@ defmodule MailAddress.Parser.Domain do
       |> :inet.parse_ipv4strict_address()
 
     case pa do
-      {:ok, {_, _, _, _}} = r ->
-        r
+      {:ok, {_, _, _, _} = addr} ->
+        {:ok, addr, "#{:inet.ntoa(addr)}"}
 
       {:error, :einval} ->
         {:error, "invalid IPv4 address literal"}

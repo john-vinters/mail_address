@@ -198,6 +198,7 @@ defmodule ParsingTest do
     assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("test@[192.168.0.1]", opts)
     assert MailAddress.address_literal(addr) == {192, 168, 0, 1}
     assert MailAddress.address_literal?(addr)
+    assert "<test@[192.168.0.1]>" = MailAddress.encode(addr)
 
     assert {:error, "domain can't be localhost"} = Parser.parse("test@[127.0.0.1]", opts)
     assert {:error, "invalid IPv4 address literal"} = Parser.parse("test@[127]", opts)
@@ -210,6 +211,7 @@ defmodule ParsingTest do
 
     assert {:ok, %MailAddress{} = addr, ""} =
              Parser.parse("test@[IPv6:::FFFF:192.168.42.2]", opts)
+    assert "<test@[IPv6:::ffff:192.168.42.2]>" = MailAddress.encode(addr)
 
     assert MailAddress.address_literal(addr) == {0, 0, 0, 0, 0, 65535, 49320, 10754}
     assert MailAddress.address_literal?(addr)
