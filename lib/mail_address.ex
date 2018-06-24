@@ -581,7 +581,7 @@ defmodule MailAddress do
     do: <<>>
 
   def encode(%MailAddress{needs_quoting: false} = addr, false),
-    do: <<addr.local_part::binary, ?@::size(8), addr.domain::binary>>
+    do: <<addr.local_part::binary, encode_domain(addr)::binary>>
 
   def encode(%MailAddress{needs_quoting: true} = addr, false) do
     local =
@@ -595,7 +595,15 @@ defmodule MailAddress do
       end)
       |> :binary.list_to_bin()
 
-    <<?"::size(8), local::binary, ?"::size(8), ?@::size(8), addr.domain::binary>>
+    <<?"::size(8), local::binary, ?"::size(8), encode_domain(addr)::binary>>
+  end
+
+  # encodes domain part, including leading '@' if required.
+  defp encode_domain(%MailAddress{domain: ""}) do
+    ""
+  end
+  defp encode_domain(%MailAddress{domain: domain}) do
+    <<?@::size(8), domain::binary>>
   end
 
   @doc """

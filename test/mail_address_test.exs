@@ -30,4 +30,15 @@ defmodule MailAddressTest do
     assert MailAddress.domains_equal?(addr1, addr3)
     assert MailAddress.domains_equal?(addr2, addr3)
   end
+
+  test "empty domain is encoded correctly" do
+    assert {:ok, %MailAddress{} = addr1, ""} = Parser.parse("test@example.org")
+    assert "test" = MailAddress.local_part(addr1)
+    assert "example.org" = MailAddress.domain(addr1)
+    assert "<test@example.org>" = MailAddress.encode(addr1)
+    assert {:ok ,%MailAddress{} = addr2} = MailAddress.set_domain(addr1, "", %MailAddress.Options{require_domain: false})
+    assert "" = MailAddress.domain(addr2)
+    assert "<test>" = MailAddress.encode(addr2)
+  end
+
 end
