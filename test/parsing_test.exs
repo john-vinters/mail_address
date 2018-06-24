@@ -51,6 +51,12 @@ defmodule ParsingTest do
 
     assert "a quoted string" = MailAddress.local_part(addr)
     assert "example.org" = MailAddress.domain(addr)
+
+    assert {:ok, %MailAddress{} = addr, ""} =
+             Parser.parse("\\a\\ \\q\\u\\o\\t\\e\\d\\ \\s\\t\\r\\i\\n\\g@example.org")
+
+    assert "a quoted string" = MailAddress.local_part(addr)
+    assert "example.org" = MailAddress.domain(addr)
   end
 
   test "rejects quoted string with partial quoted pair" do
@@ -75,10 +81,12 @@ defmodule ParsingTest do
 
   test "rejects address local part beginning with dot" do
     assert {:error, _} = Parser.parse(".example@example.org")
+    assert {:error, _} = Parser.parse(".\\example@example.org")
   end
 
   test "rejects address local part ending with dot" do
     assert {:error, _} = Parser.parse("example.@example.org")
+    assert {:error, _} = Parser.parse("exampl\\e.@example.org")
   end
 
   test "rejects address local part with consecutive dots" do
@@ -87,6 +95,12 @@ defmodule ParsingTest do
 
   test "accepts quoted address local part with consecutive dots" do
     assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("\"example..example\"@example.org")
+    assert "example..example" = MailAddress.local_part(addr)
+    assert "example.org" = MailAddress.domain(addr)
+    assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("example\\..example@example.org")
+    assert "example..example" = MailAddress.local_part(addr)
+    assert "example.org" = MailAddress.domain(addr)
+    assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("example.\\.example@example.org")
     assert "example..example" = MailAddress.local_part(addr)
     assert "example.org" = MailAddress.domain(addr)
   end
@@ -193,12 +207,17 @@ defmodule ParsingTest do
 
   test "parses IPv6 domain literals correctly" do
     opts = %Options{allow_address_literal: true}
-    assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("test@[IPv6:::FFFF:192.168.42.2]", opts)
+
+    assert {:ok, %MailAddress{} = addr, ""} =
+             Parser.parse("test@[IPv6:::FFFF:192.168.42.2]", opts)
+
     assert MailAddress.address_literal(addr) == {0, 0, 0, 0, 0, 65535, 49320, 10754}
     assert MailAddress.address_literal?(addr)
 
     assert {:error, "domain can't be localhost"} = Parser.parse("test@[IPv6:::1]", opts)
     assert {:error, "invalid IPv4 address literal"} = Parser.parse("test@[::1]", opts)
-    assert {:error, "invalid IPv6 address literal"} = Parser.parse("test@[IPv6:127.0.0.0.1]", opts)
+
+    assert {:error, "invalid IPv6 address literal"} =
+             Parser.parse("test@[IPv6:127.0.0.0.1]", opts)
   end
 end

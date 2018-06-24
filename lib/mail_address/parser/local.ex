@@ -20,39 +20,45 @@ defmodule MailAddress.Parser.Local do
           {:ok, String.t(), String.t()} | MailAddress.error()
   defp parse_dot_str(_, s \\ {:first_atom, ""})
 
-  # credo:disable-for-lines:35
+  # credo:disable-for-lines:44
   defp parse_dot_str(<<ch::size(8), rest::binary>> = local, {state, acc}) do
-    is_atext = CharSet.atext?(ch)
+    is_atext? = CharSet.atext?(ch)
 
-    case state do
-      :dot when is_atext ->
+    cond do
+      state == :dot && is_atext? ->
         parse_dot_str(rest, {:other_atom, <<acc::binary, ch::size(8)>>})
 
-      :dot when ch == ?. ->
+      state == :dot && ch == ?. ->
         {:error, "unexpected dot"}
 
-      :dot ->
+      (state == :dot || :first_atom || :other_atom || :rest_atext) && ch == ?\\ ->
+        case parse_dot_str_quoted(rest) do
+          {:ok, ch, rest} -> parse_dot_str(rest, {:rest_atext, <<acc::binary, ch::size(8)>>})
+          {:error, _} = err -> err
+        end
+
+      state == :dot ->
         {:error, "unexpected character #{CharSet.format(ch)}"}
 
-      :first_atom when is_atext ->
+      state == :first_atom && is_atext? ->
         parse_dot_str(rest, {:rest_atext, <<acc::binary, ch::size(8)>>})
 
-      :first_atom ->
+      state == :first_atom ->
         {:ok, acc, local}
 
-      :other_atom when is_atext ->
+      state == :other_atom && is_atext? ->
         parse_dot_str(rest, {:rest_atext, <<acc::binary, ch::size(8)>>})
 
-      :other_atom ->
+      state == :other_atom ->
         {:ok, acc, local}
 
-      :rest_atext when is_atext ->
+      state == :rest_atext && is_atext? ->
         parse_dot_str(rest, {:rest_atext, <<acc::binary, ch::size(8)>>})
 
-      :rest_atext when ch == ?. ->
+      state == :rest_atext && ch == ?. ->
         parse_dot_str(rest, {:dot, <<acc::binary, ch::size(8)>>})
 
-      :rest_atext ->
+      state == :rest_atext ->
         {:ok, acc, local}
     end
   end
@@ -62,6 +68,17 @@ defmodule MailAddress.Parser.Local do
       :dot -> {:error, "local part can't end with a dot"}
       _ -> {:ok, acc, ""}
     end
+  end
+
+  defp parse_dot_str_quoted(<<ch::size(8), rest::binary>>) do
+    case CharSet.qpair?(ch) do
+      true -> {:ok, ch, rest}
+      false -> {:error, "invalid quoted character #{CharSet.format(ch)}"}
+    end
+  end
+
+  defp parse_dot_str_quoted("") do
+    {:error, "invalid quoted character"}
   end
 
   @spec parse_quoted_str(String.t(), String.t()) ::
