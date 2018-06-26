@@ -12,8 +12,12 @@ defmodule MailAddress.Parser.Local do
   Returns `{:ok, local_part, remainder}` or `{:error, reason}`.
   """
   @spec parse(String.t()) :: {:ok, String.t(), String.t()} | MailAddress.error()
-  def parse(<<?"::size(8), local::binary>>), do: parse_quoted_str(local)
-  def parse(local) when is_binary(local), do: parse_dot_str(local)
+  def parse(<<?@::size(8), _rest::binary>> = local), do: parse_source_routed(local)
+  def parse(local) when is_binary(local), do: parse_apply(local)
+
+  @spec parse_apply(String.t()) :: {:ok, String.t(), String.t()} | MailAddress.error()
+  defp parse_apply(<<?"::size(8), local::binary>>), do: parse_quoted_str(local)
+  defp parse_apply(local) when is_binary(local), do: parse_dot_str(local)
 
   # parses dot-string.
   @spec parse_dot_str(String.t(), {atom, String.t()}) ::
@@ -100,4 +104,16 @@ defmodule MailAddress.Parser.Local do
       true -> {:error, "invalid character in quoted string #{CharSet.format(qp)}"}
     end
   end
+
+  defp parse_source_routed(<<?@::size(8), rest::binary>>) do
+    case MailAddress.Parser.Domain.parse(rest) do
+      {:ok, _host, <<?,::size(8), rem::binary>>, _} ->
+        parse_source_routed(rem)
+      {:ok, _host, <<?:::size(8), rem::binary>>, _} ->
+        parse_apply(rem)
+      _other ->
+        {:error, "invalid source route"}
+    end
+  end
+  defp parse_source_routed(_), do: {:error, "invalid source route"}
 end

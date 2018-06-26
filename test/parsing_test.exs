@@ -227,4 +227,19 @@ defmodule ParsingTest do
     assert {:error, "invalid IPv6 address literal"} =
              Parser.parse("test@[IPv6:127.0.0.0.1]", opts)
   end
+
+  test "source routes are accepted but removed" do
+    assert {:ok, %MailAddress{} = addr, ""} = Parser.parse("@host1,@host2:example@example.org")
+    assert "example" = MailAddress.local_part(addr)
+    assert "example.org" = MailAddress.domain(addr)
+    assert MailAddress.local_part?(addr)
+    assert MailAddress.domain?(addr)
+    assert !MailAddress.null?(addr)
+  end
+
+  test "invalid source routes are rejected" do
+    assert {:error, _} = Parser.parse("<@host1,:example@example.org>")
+    assert {:error, _} = Parser.parse("<@host1,host2:example@example.org>")
+    assert {:error, _} = Parser.parse("<@host1,@host2,example@example.org>")
+  end
 end
