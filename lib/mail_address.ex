@@ -213,7 +213,8 @@ defmodule MailAddress do
       * `:allow_address_literal` - if `true`, allows domain part to be an
         address literal.  Defaults to `false`.
 
-      * `:allow_localhost` - if `true`, allows domain part to be "localhost".
+      * `:allow_localhost` - if `true`, allows domain part to be "localhost"
+        or the equivalent address literal (`[127.0.0.1]` or `[IPv6:::1]`).
         Defaults to `false`.
 
       * `:allow_null` - if `true` allows address to be null. Defaults to `false`.
