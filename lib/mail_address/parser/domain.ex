@@ -91,13 +91,8 @@ defmodule MailAddress.Parser.Domain do
     end
   end
 
-  defp parse_domain_repeat(domain, acc) when is_binary(domain) and is_binary(acc) do
-    if byte_size(acc) < 256 do
-      {:ok, acc, domain}
-    else
-      {:error, "domain must be less than 256 characters in length"}
-    end
-  end
+  defp parse_domain_repeat(domain, acc) when is_binary(domain) and is_binary(acc),
+    do: {:ok, acc, domain}
 
   # Parses a sub-domain, returning `{:ok, sub-domain, remainder}` or `{:error, reason}`.
   defp parse_subdomain(""), do: {:error, "unexpected end of domain part"}
