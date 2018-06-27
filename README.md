@@ -24,7 +24,7 @@ file:
 ```elixir
 defp deps do
   [
-    {:mail_address, "~> 0.5.0"}
+    {:mail_address, "~> 0.6.0"}
   ]
 end
 ```
