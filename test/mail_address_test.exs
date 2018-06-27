@@ -44,4 +44,22 @@ defmodule MailAddressTest do
     assert "<test>" = MailAddress.encode(addr2)
   end
 
+  test "domain size limits are correctly applied" do
+    opts = %MailAddress.Options{max_domain_length: 11}
+    assert {:ok, %MailAddress{}, ""} = Parser.parse("test@example.org", opts)
+    assert {:error, _} = Parser.parse("test@longer.example.org", opts)
+  end
+
+  test "local part size limits are correctly applied" do
+    opts = %MailAddress.Options{max_local_part_length: 4}
+    assert {:ok, %MailAddress{}, ""} = Parser.parse("test@example.org", opts)
+    assert {:error, _} = Parser.parse("test2@example.org", opts)
+  end
+
+  test "overall size limits are correctly applied" do
+    opts = %MailAddress.Options{max_address_length: 16}
+    assert {:ok, %MailAddress{}, ""} = Parser.parse("test@example.org", opts)
+    assert {:error, _} = Parser.parse("test2@example.org", opts)
+    assert {:error, _} = Parser.parse("test@examples.org", opts)
+  end
 end
