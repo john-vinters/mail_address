@@ -289,11 +289,13 @@ defmodule MailAddress do
 
   @doc false
   @spec cast(String.t() | MailAddress.t()) :: {:ok, MailAddress.t()} :: :error
-  def cast(addr) when is_binary(addr) do
+  def cast(<<addr::binary>>) do
     trimmed_addr = String.trim(addr)
+
     case MailAddress.Parser.parse(trimmed_addr, ecto_parse_options()) do
       {:ok, %MailAddress{} = parsed, ""} ->
         {:ok, parsed}
+
       _ ->
         :error
     end
@@ -394,7 +396,7 @@ defmodule MailAddress do
   # checks a given local part contains only valid characters.
   # returns either `:ok` or `{:error, error_message}`.
   @spec check_local_part(String.t()) :: :ok | error()
-  defp check_local_part(local) when is_binary(local) do
+  defp check_local_part(<<local::binary>>) do
     local
     |> :binary.bin_to_list()
     |> Enum.reduce_while(:ok, fn ch, acc ->
@@ -525,7 +527,7 @@ defmodule MailAddress do
       true
   """
   @spec domains_equal?(MailAddress.t(), String.t() | MailAddress.t()) :: boolean
-  def domains_equal?(%MailAddress{domain: d1} = addr, domain) when is_binary(domain) do
+  def domains_equal?(%MailAddress{domain: d1} = addr, <<domain::binary>>) do
     String.downcase(d1) == String.downcase(domain) ||
       (localhost?(addr) && localhost_string?(domain))
   end
@@ -540,8 +542,8 @@ defmodule MailAddress do
   def dump(_), do: :error
 
   # parses options for use with ecto
-  defp ecto_parse_options, do:
-    %MailAddress.Options{
+  defp ecto_parse_options,
+    do: %MailAddress.Options{
       allow_address_literal: true,
       allow_localhost: true,
       allow_null: true,
@@ -603,6 +605,7 @@ defmodule MailAddress do
   defp encode_domain(%MailAddress{domain: ""}) do
     ""
   end
+
   defp encode_domain(%MailAddress{domain: domain}) do
     <<?@::size(8), domain::binary>>
   end
@@ -628,8 +631,8 @@ defmodule MailAddress do
   end
 
   @doc false
-  @spec load(String.t) :: {:ok, MailAddress.t()} | :error
-  def load(data) when is_binary(data) do
+  @spec load(String.t()) :: {:ok, MailAddress.t()} | :error
+  def load(<<data::binary>>) do
     case MailAddress.Parser.parse(data, ecto_parse_options()) do
       {:ok, %MailAddress{} = parsed, ""} -> {:ok, parsed}
       _ -> :error
@@ -681,7 +684,7 @@ defmodule MailAddress do
       false
   """
   @spec local_parts_equal?(MailAddress.t(), MailAddress.t()) :: boolean
-  def local_parts_equal?(%MailAddress{local_part: l1}, local_part) when is_binary(local_part),
+  def local_parts_equal?(%MailAddress{local_part: l1}, <<local_part::binary>>),
     do: l1 == local_part
 
   def local_parts_equal?(%MailAddress{local_part: l1}, %MailAddress{local_part: l2}),
@@ -789,8 +792,11 @@ defmodule MailAddress do
       {:error, "invalid domain"}
   """
   @spec new(String.t(), String.t(), Options.t()) :: {:ok, MailAddress.t()} | error()
-  def new(local, domain, %MailAddress.Options{} = options \\ %MailAddress.Options{})
-      when is_binary(local) and is_binary(domain) do
+  def new(
+        <<local::binary>>,
+        <<domain::binary>>,
+        %MailAddress.Options{} = options \\ %MailAddress.Options{}
+      ) do
     with :ok <- check_local_part(local),
          {:ok, parsed_domain, "", literal} <- MailAddress.Parser.Domain.parse(domain) do
       %MailAddress{address_literal: literal, local_part: local, domain: parsed_domain}
@@ -846,10 +852,9 @@ defmodule MailAddress do
   @spec set_domain(MailAddress.t(), String.t(), Options.t()) :: {:ok, MailAddress.t()} | error()
   def set_domain(
         %MailAddress{} = addr,
-        domain,
+        <<domain::binary>>,
         %MailAddress.Options{} = options \\ %MailAddress.Options{}
-      )
-      when is_binary(domain) do
+      ) do
     case MailAddress.Parser.Domain.parse(domain) do
       {:ok, parsed_domain, "", literal} ->
         %{addr | address_literal: literal, domain: parsed_domain}
@@ -893,10 +898,9 @@ defmodule MailAddress do
           {:ok, MailAddress.t()} | error()
   def set_local_part(
         %MailAddress{} = addr,
-        local,
+        <<local::binary>>,
         %MailAddress.Options{} = options \\ %MailAddress.Options{}
-      )
-      when is_binary(local) do
+      ) do
     with :ok <- check_local_part(local) do
       %{addr | local_part: local}
       |> check(options)

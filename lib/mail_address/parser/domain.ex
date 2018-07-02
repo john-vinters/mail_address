@@ -25,14 +25,15 @@ defmodule MailAddress.Parser.Domain do
   end
 
   # ordinary domain
-  def parse(domain) when is_binary(domain) do
+  def parse(<<domain::binary>>) do
     with {:ok, subdomain, rem} <- parse_subdomain(domain),
          {:ok, dom, rem} <- parse_domain_repeat(rem, subdomain),
          do: {:ok, dom, rem, nil}
   end
 
   # parses address literal (square brackets have already been removed).
-  @spec parse_address_literal(String.t()) :: {:ok, MailAddress.ip_address(), String.t()} | MailAddress.error()
+  @spec parse_address_literal(String.t()) ::
+          {:ok, MailAddress.ip_address(), String.t()} | MailAddress.error()
   def parse_address_literal(<<"IPv6:"::binary, literal::binary>>) do
     pa =
       literal
@@ -48,7 +49,7 @@ defmodule MailAddress.Parser.Domain do
     end
   end
 
-  def parse_address_literal(literal) when is_binary(literal) do
+  def parse_address_literal(<<literal::binary>>) do
     pa =
       literal
       |> :binary.bin_to_list()
@@ -83,7 +84,7 @@ defmodule MailAddress.Parser.Domain do
   def parse_at(<<?@::size(8), domain::binary>>),
     do: parse(domain)
 
-  def parse_at(domain) when is_binary(domain), do: {:ok, "", domain, nil}
+  def parse_at(<<domain::binary>>), do: {:ok, "", domain, nil}
 
   defp parse_domain_repeat(<<?.::size(8), domain::binary>>, acc) do
     with {:ok, subdomain, rem} <- parse_subdomain(domain) do
@@ -91,7 +92,7 @@ defmodule MailAddress.Parser.Domain do
     end
   end
 
-  defp parse_domain_repeat(domain, acc) when is_binary(domain) and is_binary(acc),
+  defp parse_domain_repeat(<<domain::binary>>, <<acc::binary>>),
     do: {:ok, acc, domain}
 
   # Parses a sub-domain, returning `{:ok, sub-domain, remainder}` or `{:error, reason}`.
@@ -121,7 +122,7 @@ defmodule MailAddress.Parser.Domain do
   end
 
   # moves any hyphen from end of acc onto beginning of rem
-  defp shuffle_hyphen(acc, rem) when is_binary(acc) and is_binary(rem) do
+  defp shuffle_hyphen(<<acc::binary>>, <<rem::binary>>) do
     if String.ends_with?(acc, "-") do
       new_acc = binary_part(acc, 0, byte_size(acc) - 1)
       new_rem = <<?-::size(8), rem::binary>>

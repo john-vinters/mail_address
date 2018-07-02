@@ -51,8 +51,7 @@ defmodule MailAddress.Parser do
       #MailAddress<test@example.org>
   """
   @spec parse(String.t(), Options.t()) :: {:ok, MailAddress.t(), String.t()} | MailAddress.error()
-  def parse(raw_addr, %MailAddress.Options{} = options \\ %MailAddress.Options{})
-      when is_binary(raw_addr) do
+  def parse(<<raw_addr::binary>>, %MailAddress.Options{} = options \\ %MailAddress.Options{}) do
     with {:ok, brak, ranb} <- proc_opening_bracket(raw_addr, options),
          {:ok, %MailAddress{} = addr, rem} <- parse_apply(ranb),
          {:ok, rnb} <- proc_closing_bracket(rem, brak),
@@ -63,7 +62,7 @@ defmodule MailAddress.Parser do
   # does the main work of parsing without caring about surrounding brackets.
   # this doesn't run checks on the resulting address either.
   @spec parse_apply(String.t()) :: {:ok, MailAddress.t(), String.t()} | MailAddress.error()
-  defp parse_apply(raw_addr) when is_binary(raw_addr) do
+  defp parse_apply(<<raw_addr::binary>>) do
     with {:ok, local, remaining} <- MailAddress.Parser.Local.parse(raw_addr),
          {:ok, domain, remaining, literal} <- MailAddress.Parser.Domain.parse_at(remaining),
          do:
