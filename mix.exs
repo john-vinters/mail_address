@@ -4,7 +4,7 @@ defmodule MailAddress.MixProject do
   def project do
     [
       app: :mail_address,
-      version: "0.6.0",
+      version: "0.7.0",
       elixir: "~> 1.6",
       package: package(),
       source_url: github(),
