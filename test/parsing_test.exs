@@ -216,6 +216,7 @@ defmodule ParsingTest do
 
     assert {:ok, %MailAddress{} = addr, ""} =
              Parser.parse("test@[IPv6:::FFFF:192.168.42.2]", opts)
+
     assert "<test@[IPv6:::ffff:192.168.42.2]>" = MailAddress.encode(addr)
 
     assert MailAddress.address_literal(addr) == {0, 0, 0, 0, 0, 65535, 49320, 10754}
