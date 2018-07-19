@@ -18,7 +18,6 @@ defmodule MailAddress do
   as it will tolerate backslash quoted characters in the local part of
   addresses outside of quoted strings - this is technically against the
   RFC5321 grammar, but there are examples everywhere of this sort of address.
-
   Despite this, encoded addresses produced by the library are always quoted
   correctly.
 
@@ -118,9 +117,27 @@ defmodule MailAddress do
   Addresses converted using from strings using cast/4 will be checked
   for validity before they are accepted into the database.
 
-  Note that casting is done with a permissive set of options (allowing
-  null addresses etc) - if you wish to be stricter then you should apply
-  some validation yourself.
+  Note that casting is done by default with a permissive set of options
+  (allowing null addresses etc) - if you wish to be stricter then you
+  can change the defaults in your config.exs (see below), or apply some
+  further validation yourself.
+
+  ### config.exs configuration when using with Ecto
+
+  The library uses `:mail_address` as the application name, and the
+  following boolean keys, which are either `true` to enable, or `false`
+  to disable.
+
+    * `:ecto_allow_address_literal` - IP address literal domains.
+
+    * `:ecto_allow_localhost` - allow `localhost` as domain.
+
+    * `:ecto_allow_null` - allow empty (null) addresses.
+
+    * `:ecto_downcase_domain` - force domain name to lower case.
+
+    * `:ecto_require_domain` - require domain part to be present in non-null
+      addresses.
 
   ## Usage with JSON libraries
 
@@ -541,17 +558,25 @@ defmodule MailAddress do
   def dump(%MailAddress{} = addr), do: {:ok, MailAddress.encode(addr, false)}
   def dump(_), do: :error
 
-  # parses options for use with ecto
-  defp ecto_parse_options,
-    do: %MailAddress.Options{
-      allow_address_literal: true,
-      allow_localhost: true,
-      allow_null: true,
+  # parses options for use with ecto - uses fairly sensible defaults, but
+  #  most of these can be overridden using config.exs settings.
+  defp ecto_parse_options do
+    allow_address_literal = Application.get_env(:mail_address, :ecto_allow_address_literal, true)
+    allow_localhost = Application.get_env(:mail_address, :ecto_allow_localhost, false)
+    allow_null = Application.get_env(:mail_address, :ecto_allow_null, true)
+    downcase_domain = Application.get_env(:mail_address, :ecto_downcase_domain, true)
+    require_domain = Application.get_env(:mail_address, :ecto_require_domain, true)
+
+    %MailAddress.Options{
+      allow_address_literal: allow_address_literal,
+      allow_localhost: allow_localhost,
+      allow_null: allow_null,
       allow_null_local_part: false,
-      downcase_domain: true,
+      downcase_domain: downcase_domain,
       require_brackets: false,
-      require_domain: true
+      require_domain: require_domain
     }
+  end
 
   @doc """
   Returns address safely encoded, optionally (and by default) bracketed.

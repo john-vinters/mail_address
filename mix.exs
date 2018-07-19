@@ -4,13 +4,13 @@ defmodule MailAddress.MixProject do
   def project do
     [
       app: :mail_address,
-      version: "0.7.0",
+      version: "0.8.0",
       elixir: "~> 1.6",
       package: package(),
       source_url: github(),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      description: "RFC5321 email address handling library",
+      description: "RFC5321 email address processing and validation library",
       dialyzer: [
         plt_add_deps: :transitive,
         flags: [:unmatched_returns, :race_conditions, :error_handling, :underspecs],
