@@ -305,7 +305,7 @@ defmodule MailAddress do
   def address_literal?(%MailAddress{}), do: true
 
   @doc false
-  @spec cast(String.t() | MailAddress.t()) :: {:ok, MailAddress.t()} :: :error
+  @spec cast(String.t() | MailAddress.t()) :: {:ok, MailAddress.t()} | :error
   def cast(<<addr::binary>>) do
     trimmed_addr = String.trim(addr)
 
