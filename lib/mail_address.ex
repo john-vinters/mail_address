@@ -285,7 +285,7 @@ defmodule MailAddress do
       iex> MailAddress.address_literal(addr)
       {192, 168, 0, 1}
   """
-  @spec address_literal(MailAddress.t()) :: String.t()
+  @spec address_literal(MailAddress.t()) :: nil | ip_address() 
   def address_literal(%MailAddress{address_literal: a}), do: a
 
   @doc """
