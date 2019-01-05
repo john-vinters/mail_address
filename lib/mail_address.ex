@@ -285,7 +285,7 @@ defmodule MailAddress do
       iex> MailAddress.address_literal(addr)
       {192, 168, 0, 1}
   """
-  @spec address_literal(MailAddress.t()) :: nil | ip_address() 
+  @spec address_literal(MailAddress.t()) :: nil | ip_address()
   def address_literal(%MailAddress{address_literal: a}), do: a
 
   @doc """
@@ -305,7 +305,7 @@ defmodule MailAddress do
   def address_literal?(%MailAddress{}), do: true
 
   @doc false
-  @spec cast(String.t() | MailAddress.t()) :: {:ok, MailAddress.t()} | :error
+  @spec cast(nil | String.t() | MailAddress.t()) :: {:ok, nil | MailAddress.t()} | :error
   def cast(<<addr::binary>>) do
     trimmed_addr = String.trim(addr)
 
@@ -318,9 +318,9 @@ defmodule MailAddress do
     end
   end
 
-  def cast(%MailAddress{} = addr) do
-    {:ok, addr}
-  end
+  def cast(%MailAddress{} = addr), do: {:ok, addr}
+
+  def cast(nil), do: {:ok, nil}
 
   def cast(_), do: :error
 
@@ -650,10 +650,12 @@ defmodule MailAddress do
       iex> MailAddress.equal?(addr_1, addr_3)
       false
   """
-  @spec equal?(MailAddress.t(), MailAddress.t()) :: boolean
+  @spec equal?(MailAddress.t(), nil | MailAddress.t()) :: boolean
   def equal?(%MailAddress{} = addr_1, %MailAddress{} = addr_2) do
     local_parts_equal?(addr_1, addr_2) && domains_equal?(addr_1, addr_2)
   end
+
+  def equal?(%MailAddress{}, nil), do: false
 
   @doc false
   @spec load(String.t()) :: {:ok, MailAddress.t()} | :error
