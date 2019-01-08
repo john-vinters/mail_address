@@ -271,6 +271,18 @@ defmodule MailAddress do
               max_local_part_length: 64,
               require_brackets: false,
               require_domain: true
+
+    @doc "Returns relaxed parsing options."
+    def relaxed do
+      %__MODULE__{
+        allow_address_literal: true,
+        allow_localhost: true,
+        allow_null: true,
+        allow_null_local_part: true,
+        require_brackets: false,
+        require_domain: false
+      }
+    end
   end
 
   @doc """
@@ -650,12 +662,41 @@ defmodule MailAddress do
       iex> MailAddress.equal?(addr_1, addr_3)
       false
   """
-  @spec equal?(MailAddress.t(), nil | MailAddress.t()) :: boolean
+  @spec equal?(nil | MailAddress.t() | String.t(), nil | MailAddress.t() | String.t()) :: boolean
   def equal?(%MailAddress{} = addr_1, %MailAddress{} = addr_2) do
     local_parts_equal?(addr_1, addr_2) && domains_equal?(addr_1, addr_2)
   end
 
   def equal?(%MailAddress{}, nil), do: false
+
+  def equal?(nil, %MailAddress{}), do: false
+
+  def equal?(nil, nil), do: true
+
+  def equal?(str, %MailAddress{} = addr) when is_binary(str) do
+    opts = Options.relaxed()
+
+    case MailAddress.Parser.parse(str, opts) do
+      {:ok, %MailAddress{} = parsed_addr, ""} -> equal?(parsed_addr, addr)
+      {:ok, %MailAddress{}, _} -> false
+      {:error, _} -> false
+    end
+  end
+
+  def equal?(%MailAddress{} = addr, str) when is_binary(str),
+    do: equal?(str, addr)
+
+  def equal?(str_1, str_2) when is_binary(str_1) and is_binary(str_2) do
+    opts = Options.relaxed()
+
+    with {:ok, %MailAddress{} = addr_1, ""} <- MailAddress.Parser.parse(str_1, opts),
+         {:ok, %MailAddress{} = addr_2, ""} <- MailAddress.Parser.parse(str_2, opts) do
+      equal?(addr_1, addr_2)
+    else
+      {:ok, %MailAddress{}, _} -> false
+      {:error, _} -> false
+    end
+  end
 
   @doc false
   @spec load(String.t()) :: {:ok, MailAddress.t()} | :error
