@@ -122,6 +122,9 @@ defmodule MailAddress do
   can change the defaults in your config.exs (see below), or apply some
   further validation yourself.
 
+  Note that if you wish to supply a default value for an address field,
+  then it should be specified as a %MailAddress{} struct, *NOT* a string.
+
   ### config.exs configuration when using with Ecto
 
   The library uses `:mail_address` as the application name, and the
